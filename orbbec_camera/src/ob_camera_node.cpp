@@ -215,13 +215,27 @@ void OBCameraNode::setupDevices() {
   }
   if (max_depth_limit_ > 0 &&
       device_->isPropertySupported(OB_PROP_MAX_DEPTH_INT, OB_PERMISSION_READ_WRITE)) {
-    RCLCPP_INFO_STREAM(logger_, "Setting max depth limit to " << max_depth_limit_);
-    TRY_TO_SET_PROPERTY(setIntProperty, OB_PROP_MAX_DEPTH_INT, max_depth_limit_);
+    auto range = device_->getIntPropertyRange(OB_PROP_MAX_DEPTH_INT);
+    if (max_depth_limit_ < range.min || max_depth_limit_ > range.max) {
+      RCLCPP_ERROR_STREAM(logger_,
+                          "Max depth limit is out of range " << range.min << " - " << range.max);
+    } else {
+      TRY_TO_SET_PROPERTY(setIntProperty, OB_PROP_MAX_DEPTH_INT, max_depth_limit_);
+      auto new_max_depth_limit = device_->getIntProperty(OB_PROP_MAX_DEPTH_INT);
+      RCLCPP_INFO_STREAM(logger_, "Setting max depth limit to " << new_max_depth_limit);
+    }
   }
   if (min_depth_limit_ > 0 &&
       device_->isPropertySupported(OB_PROP_MIN_DEPTH_INT, OB_PERMISSION_READ_WRITE)) {
-    RCLCPP_INFO_STREAM(logger_, "Setting min depth limit to " << min_depth_limit_);
-    TRY_TO_SET_PROPERTY(setIntProperty, OB_PROP_MIN_DEPTH_INT, min_depth_limit_);
+    auto range = device_->getIntPropertyRange(OB_PROP_MIN_DEPTH_INT);
+    if (min_depth_limit_ < range.min || min_depth_limit_ > range.max) {
+      RCLCPP_ERROR_STREAM(logger_,
+                          "Min depth limit is out of range " << range.min << " - " << range.max);
+    } else {
+      TRY_TO_SET_PROPERTY(setIntProperty, OB_PROP_MIN_DEPTH_INT, min_depth_limit_);
+      auto new_min_depth_limit = device_->getIntProperty(OB_PROP_MIN_DEPTH_INT);
+      RCLCPP_INFO_STREAM(logger_, "Setting min depth limit to " << new_min_depth_limit);
+    }
   }
   if (laser_energy_level_ != -1 &&
       device_->isPropertySupported(OB_PROP_LASER_ENERGY_LEVEL_INT, OB_PERMISSION_READ_WRITE)) {
