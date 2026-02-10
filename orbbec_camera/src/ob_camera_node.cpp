@@ -1308,7 +1308,7 @@ void OBCameraNode::onTemperatureUpdate(diagnostic_updater::DiagnosticStatusWrapp
 }
 
 void OBCameraNode::setupDiagnosticUpdater() {
-  if (diagnostic_period_ <= 0.0) {
+  if (diagnostic_period_ <= 0.0 || isOpenNIDevice(device_->getDeviceInfo()->pid())) {
     return;
   }
   try {
