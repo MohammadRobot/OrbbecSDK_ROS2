@@ -236,7 +236,7 @@ sudo udevadm control --reload-rules && sudo udevadm trigger
 ```bash
 cd ~/ros2_ws/
 # build release, Default is Debug
-colcon build --event-handlers  console_direct+  --cmake-args  -DCMAKE_BUILD_TYPE=Release
+colcon build --packages-select orbbec_camera orbbec_camera_msgs orbbec_description --event-handlers  console_direct+  --cmake-args  -DCMAKE_BUILD_TYPE=Release
 ```
 
 Launch camera node
@@ -244,8 +244,8 @@ Launch camera node
 - On terminal 1
 
 ```bash
-. ./install/setup.bash
-ros2 launch orbbec_camera astra.launch.py # or other launch file, see below table
+source install/setup.bash 
+ros2 launch orbbec_camera gemini_e.launch.py # or other launch file, see below table
 ```
 
 - On terminal 2

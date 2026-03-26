@@ -10,8 +10,8 @@ import os
 
 
 def generate_launch_description():
-    # Declare arguments
-    args = [
+    # Declare camera arguments
+    camera_args = [
         DeclareLaunchArgument('camera_name', default_value='camera'),
         DeclareLaunchArgument('depth_registration', default_value='false'),
         DeclareLaunchArgument('serial_number', default_value=''),
@@ -20,7 +20,7 @@ def generate_launch_description():
         DeclareLaunchArgument('vendor_id', default_value='0x2bc5'),
         DeclareLaunchArgument('product_id', default_value=''),
         DeclareLaunchArgument('enable_point_cloud', default_value='true'),
-        DeclareLaunchArgument('enable_colored_point_cloud', default_value='false'),
+        DeclareLaunchArgument('enable_colored_point_cloud', default_value='false'), 
         DeclareLaunchArgument('point_cloud_qos', default_value='default'),
         DeclareLaunchArgument('connection_delay', default_value='100'),
         DeclareLaunchArgument('color_width', default_value='640'),
@@ -72,14 +72,45 @@ def generate_launch_description():
         DeclareLaunchArgument('laser_energy_level', default_value='-1'),
         DeclareLaunchArgument('enable_heartbeat', default_value='false'),
     ]
+    # Declare base_link -> camera_link static transform arguments
+    tf_args = [
+        DeclareLaunchArgument('base_frame_id', default_value='base_link'),
+        DeclareLaunchArgument(
+            'camera_link_frame_id',
+            default_value=[LaunchConfiguration('camera_name'), '_link']
+        ),
+        DeclareLaunchArgument('base_to_camera_x', default_value='0.0'),
+        DeclareLaunchArgument('base_to_camera_y', default_value='0.0'),
+        DeclareLaunchArgument('base_to_camera_z', default_value='0.0'),
+        DeclareLaunchArgument('base_to_camera_roll', default_value='0.0'),
+        DeclareLaunchArgument('base_to_camera_pitch', default_value='0.0'),
+        DeclareLaunchArgument('base_to_camera_yaw', default_value='3.141592653589793'),
+    ]
 
     # Node configuration
-    parameters = [{arg.name: LaunchConfiguration(arg.name)} for arg in args]
+    parameters = [{arg.name: LaunchConfiguration(arg.name)} for arg in camera_args]
+    base_to_camera_tf = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        name='base_to_camera_tf',
+        arguments=[
+            '--x', LaunchConfiguration('base_to_camera_x'),
+            '--y', LaunchConfiguration('base_to_camera_y'),
+            '--z', LaunchConfiguration('base_to_camera_z'),
+            '--roll', LaunchConfiguration('base_to_camera_roll'),
+            '--pitch', LaunchConfiguration('base_to_camera_pitch'),
+            '--yaw', LaunchConfiguration('base_to_camera_yaw'),
+            '--frame-id', LaunchConfiguration('base_frame_id'),
+            '--child-frame-id', LaunchConfiguration('camera_link_frame_id'),
+        ],
+        output='screen',
+    )
     # get  ROS_DISTRO
     ros_distro = os.environ["ROS_DISTRO"]
     if ros_distro == "foxy":
         return LaunchDescription(
-            args
+            camera_args
+            + tf_args
             + [
                 Node(
                     package="orbbec_camera",
@@ -88,7 +119,8 @@ def generate_launch_description():
                     namespace=LaunchConfiguration("camera_name"),
                     parameters=parameters,
                     output="screen",
-                )
+                ),
+                base_to_camera_tf,
             ]
         )
     # Define the ComposableNode
@@ -114,11 +146,13 @@ def generate_launch_description():
         )
         # Launch description
         ld = LaunchDescription(
-            args
+            camera_args
+            + tf_args
             + [
                 GroupAction(
                     [PushRosNamespace(LaunchConfiguration("camera_name")), container]
-                )
+                ),
+                base_to_camera_tf,
             ]
         )
         return ld
