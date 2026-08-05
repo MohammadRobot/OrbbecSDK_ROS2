@@ -374,14 +374,15 @@ ros2 launch orbbec_camera gemini_intra_process_demo_launch.py
 
 ## 使用V4L2后端
 
-要为 Gemini2 系列相机启用 V4L2 后端，请按以下步骤操作：
+带 UVC Color 的 OpenNI 设备如果在对应 launch 文件中暴露了 `uvc_backend` 参数，可以通过该参数选择 Linux
+UVC 后端。可选值为 `auto`、`libuvc`、`v4l2`，大小写不敏感。默认值为 `auto`，表示沿用
+`config/OrbbecSDKConfig_v1.0.xml` 中的 SDK 配置；不支持的取值也会回退到 SDK XML 配置。
 
-1. Gemini2 系列相机支持 V4L2 后端。
-2. 打开 `config/OrbbecSDKConfig_v1.0.xml` 文件。
-3. 将导航选项设置为 `LinuxUVCBackend`。
-4. 将后端设置更改为 `V4L2`。
+```bash
+ros2 launch orbbec_camera gemini2.launch.py uvc_backend:=v4l2
+```
 
-注意：默认情况下未启用 V4L2 后端。
+仅 `config/OrbbecSDKConfig_v1.0.xml` 中支持 `LinuxUVCDefaultBackend` 的设备会提供 `uvc_backend` 参数。
 
 ## Launch参数
 
@@ -415,7 +416,9 @@ ros2 launch orbbec_camera gemini_intra_process_demo_launch.py
 - `gyro_range`: 陀螺仪的范围，可选值为 `16dps`, `31dps`, `62dps`, `125dps`, `250dps`, `500dps`, `1000dps`, `2000dps`. 具体值取决于当前相机。
 - `enumerate_net_device`: 启用枚举网络设备的功能。true 表示启用，false 表示禁用。
   此功能仅支持 Femto Mega 和 Gemini 2 XL 设备。通过网络访问这些设备时，需要提前配置设备的 IP 地址。启用开关需要设置为 true。
-- `depth_filter_config`: 配置深度过滤配置文件的加载路径。默认情况下，深度过滤配置文件位于 /config/depthfilter 目录。仅 Gemini2 支持。
+- `depth_filter_config`: 配置深度过滤配置文件的加载路径。默认情况下，深度过滤配置文件位于 /config/depthfilter 目录。Gemini2
+  可使用 `Gemini2_v1.8.json`；暴露该参数的 OpenNI 和 DaBaiMax 系列设备可使用 `Openni_device.json`
+  配置离群点滤波等效果。
 - `depth_precision`: 深度精度应采用 `1mm`格式。默认值为 `1mm`。
 - `enable_laser`: 启用激光。默认值为 `true`。
 - `device_preset`: 默认值为 `Default`。仅支持 G330 系列。更多信息，请参阅 [G330 文档](https://www.orbbec.com/docs/g330-use-depth-presets/)。请参考下表，根据您的使用情况设置 `device_preset` 值。该值应为[表格](#预设presets) 中列出的预设名称之一。
@@ -438,7 +441,9 @@ ros2 launch orbbec_camera gemini_intra_process_demo_launch.py
 - `color_brightness`: 设置彩色流亮度。
 - `ir_brightness`: 设置红外流亮度。
 - `color_ae_max_exposure`: 设置彩色流自动曝光最大曝光值。
+- `color_ae_max_gain`: 设置彩色流自动曝光最大增益值。Gemini2 和 Gemini2L 支持。
 - `ir_ae_max_exposure`: 设置红外流自动曝光最大曝光值。
+- `uvc_backend`: 设置支持该参数的 OpenNI 设备 UVC Color Linux 后端。可选值为 `auto`、`libuvc`、`v4l2`，默认值为 `auto`。
 
 **重要提示**：*请仔细阅读[此链接](https://www.orbbec.com/docs/g330-use-depth-post-processing-blocks/)中关于软件过滤设置的说明。如果您不确定，请勿修改这些设置。*
 

@@ -471,6 +471,16 @@ bool isOpenNIDevice(int pid) {
                      [pid](int pid_openni) { return pid == pid_openni; });
 }
 
+bool isHostTimeSyncSupported(int pid) {
+  static const std::vector<int> UNSUPPORTED_DEVICE_PIDS = {0x069d};
+
+  if (isOpenNIDevice(pid)) {
+    return false;
+  }
+  return std::none_of(UNSUPPORTED_DEVICE_PIDS.begin(), UNSUPPORTED_DEVICE_PIDS.end(),
+                      [pid](int unsupported_pid) { return pid == unsupported_pid; });
+}
+
 OB_DEPTH_PRECISION_LEVEL depthPrecisionLevelFromString(
     const std::string &depth_precision_level_str) {
   if (depth_precision_level_str == "1mm") {

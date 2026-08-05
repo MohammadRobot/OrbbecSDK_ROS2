@@ -2,6 +2,13 @@
 Changelog for package orbbec_camera
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.5.20 (2026-06-23)
+-------------------
+* Update OrbbecSDK to v1.10.36
+* Add color auto exposure max gain launch parameter ``color_ae_max_gain`` for Gemini2 and Gemini2L
+* Add ``uvc_backend`` launch parameter for OpenNI devices with UVC Color backend support
+* Add DaBaiMax series depth filter config support for outlier filtering through JSON files
+
 1.5.14 (2025-09-30)
 -------------------
 * Bump version to 1.5.14

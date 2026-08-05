@@ -39,6 +39,7 @@
 #include <diagnostic_updater/diagnostic_updater.hpp>
 
 #include <sensor_msgs/msg/camera_info.hpp>
+#include <sensor_msgs/msg/compressed_image.hpp>
 #include <camera_info_manager/camera_info_manager.hpp>
 
 #include <image_publisher/image_publisher.hpp>
@@ -61,6 +62,7 @@
 #include "orbbec_camera/d2c_viewer.h"
 #include "magic_enum/magic_enum.hpp"
 #include "orbbec_camera/image_publisher.h"
+#include "orbbec_camera/frame_timestamp_csv_logger.h"
 #include "jpeg_decoder.h"
 #include <std_msgs/msg/string.hpp>
 
@@ -342,6 +344,10 @@ class OBCameraNode {
   void FillImuDataCopy(const IMUData& imu_data, std::deque<sensor_msgs::msg::Imu>& imu_msgs);
 
   bool setupFormatConvertType(OBFormat format);
+  bool hasCompressedImageSubscriber(const stream_index_pair& stream_index) const;
+  void publishCompressedColorImage(const std::shared_ptr<ob::Frame>& frame,
+                                   const stream_index_pair& stream_index,
+                                   const rclcpp::Time& timestamp, const std::string& frame_id);
 
   orbbec_camera_msgs::msg::IMUInfo createIMUInfo(const stream_index_pair& stream_index);
 
@@ -401,6 +407,8 @@ class OBCameraNode {
   std::map<stream_index_pair, bool> flip_stream_;
   std::map<stream_index_pair, std::string> stream_name_;
   std::map<stream_index_pair, std::shared_ptr<image_publisher>> image_publishers_;
+  std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::CompressedImage>::SharedPtr>
+      compressed_image_publishers_;
   std::map<stream_index_pair, rclcpp::Publisher<sensor_msgs::msg::CameraInfo>::SharedPtr>
       camera_info_publishers_;
 
@@ -479,6 +487,7 @@ class OBCameraNode {
   int color_gain_ = -1;
   int color_white_balance_ = -1;
   int color_ae_max_exposure_ = -1;
+  int color_ae_max_gain_ = -1;
   int color_brightness_ = -1;
   int color_sharpness_ = -1;
   int color_saturation_ = -1;
@@ -584,6 +593,9 @@ class OBCameraNode {
   int min_depth_limit_ = 0;
   int max_depth_limit_ = 0;
   std::string time_domain_ = "device";  // device, system, global
+  bool enable_frame_timestamp_csv_ = false;
+  std::string frame_timestamp_csv_file_;
+  std::unique_ptr<FrameTimestampCsvLogger> frame_timestamp_csv_logger_;
   // soft ware trigger
   rclcpp::TimerBase::SharedPtr software_trigger_timer_;
   std::chrono::milliseconds software_trigger_period_{33};

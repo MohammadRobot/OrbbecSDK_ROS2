@@ -151,6 +151,8 @@ rmw_qos_profile_t getRMWQosProfileFromString(const std::string& str_qos);
 
 bool isOpenNIDevice(int pid);
 
+bool isHostTimeSyncSupported(int pid);
+
 OB_DEPTH_PRECISION_LEVEL depthPrecisionLevelFromString(
     const std::string& depth_precision_level_str);
 

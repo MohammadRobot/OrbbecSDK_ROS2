@@ -372,14 +372,17 @@ ros2 launch orbbec_camera gemini_intra_process_demo_launch.py
 
 ## Use V4L2 backend
 
-To enable the V4L2 backend for the Gemini2 series cameras, follow these steps:
+OpenNI devices with UVC Color support can select the Linux UVC backend through the `uvc_backend` launch parameter when
+the corresponding launch file exposes it. The supported values are `auto`, `libuvc`, and `v4l2`, and the value is
+case-insensitive. The default value is `auto`, which keeps the backend selection from `config/OrbbecSDKConfig_v1.0.xml`.
+Unsupported values also fall back to the SDK XML configuration.
 
-1. The Gemini2 series cameras support the V4L2 backend.
-2. Open the `config/OrbbecSDKConfig_v1.0.xml` file.
-3. Set the navigation option to `LinuxUVCBackend`.
-4. Change the backend setting to `V4L2`.
+```bash
+ros2 launch orbbec_camera gemini2.launch.py uvc_backend:=v4l2
+```
 
-Note: The V4L2 backend is not enabled by default.
+The `uvc_backend` parameter is only available for devices that support `LinuxUVCDefaultBackend` in
+`config/OrbbecSDKConfig_v1.0.xml`.
 
 ## Launch parameters
 
@@ -427,7 +430,9 @@ The following are the launch parameters available:
   This feature is only supported by Femto Mega and Gemini 2 XL devices. When accessing these devices through the
   network, the IP address of the device needs to be configured in advance. The enable switch needs to be set to true.
 - `depth_filter_config`: Configures the loading path for the depth filtering configuration file. By default, the depth
-  filtering configuration file is located in the /config/depthfilter directory. Supported only on Gemini2.
+  filtering configuration file is located in the /config/depthfilter directory. Gemini2 can use `Gemini2_v1.8.json`;
+  OpenNI and DaBaiMax series devices that expose this parameter can use `Openni_device.json` to configure filters such
+  as outlier removal.
 - `depth_precision`: The depth precision should be in the format `1mm`. The default value is `1mm`.
 - `enable_laser`: Enables the laser. The default value is `true`.
 - `laser_on_off_mode`: Laser on/off alternate mode, 0: off, 1: on-off alternate, 2: off-on alternate. The default value
@@ -482,7 +487,10 @@ The following are the launch parameters available:
 - `color_brightness`: Color brightness.
 - `ir_brightness`: IR brightness.
 - `color_ae_max_exposure`: Color auto exposure maximum exposure.
+- `color_ae_max_gain`: Color auto exposure maximum gain. Supported by Gemini2 and Gemini2L.
 - `ir_ae_max_exposure`: IR auto exposure maximum exposure.
+- `uvc_backend`: Selects the Linux UVC Color backend for supported OpenNI devices. Optional values are `auto`, `libuvc`,
+  and `v4l2`; the default value is `auto`.
 - `enable_hardware_reset`: This option enables the hardware reset function. By default, it is set to `false`.
   If set to `true`, the camera will reboot upon its first connection.
 

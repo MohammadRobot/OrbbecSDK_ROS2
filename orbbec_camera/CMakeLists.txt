@@ -135,6 +135,7 @@ set(SOURCE_FILES
   src/d2c_viewer.cpp
   src/dynamic_params.cpp
   src/image_publisher.cpp
+  src/frame_timestamp_csv_logger.cpp
   src/ob_camera_node_driver.cpp
   src/ob_camera_node.cpp
   src/ros_param_backend.cpp

@@ -28,7 +28,6 @@
 #include <std_srvs/srv/empty.hpp>
 #include <backward_ros/backward.hpp>
 
-
 namespace orbbec_camera {
 
 class OBCameraNodeDriver : public rclcpp::Node {
@@ -83,6 +82,7 @@ class OBCameraNodeDriver : public rclcpp::Node {
   std::string serial_number_;
   std::string device_unique_id_;
   std::string usb_port_;
+  std::string uvc_backend_;
   bool enumerate_net_device_ = false;  // default false
   std::shared_ptr<Parameters> parameters_ = nullptr;
   std::shared_ptr<std::thread> query_thread_ = nullptr;

@@ -19,6 +19,7 @@ def generate_launch_description():
         DeclareLaunchArgument('device_num', default_value='1'),
         DeclareLaunchArgument('vendor_id', default_value='0x2bc5'),
         DeclareLaunchArgument('product_id', default_value=''),
+        DeclareLaunchArgument('uvc_backend', default_value='auto'),#auto, libuvc or v4l2
         DeclareLaunchArgument('enable_point_cloud', default_value='true'),
         DeclareLaunchArgument('enable_colored_point_cloud', default_value='true'),
         DeclareLaunchArgument('cloud_frame_id', default_value=''),
@@ -37,6 +38,7 @@ def generate_launch_description():
         DeclareLaunchArgument('color_gain', default_value='-1'),
         DeclareLaunchArgument('enable_color_auto_white_balance', default_value='true'),
         DeclareLaunchArgument('color_white_balance', default_value='-1'),
+        DeclareLaunchArgument('color_ae_max_gain', default_value='-1'),
         DeclareLaunchArgument('depth_width', default_value='640'),
         DeclareLaunchArgument('depth_height', default_value='400'),
         DeclareLaunchArgument('depth_fps', default_value='15'),
@@ -99,6 +101,8 @@ def generate_launch_description():
         DeclareLaunchArgument('retry_on_usb3_detection_failure', default_value='false'),
         DeclareLaunchArgument('laser_energy_level', default_value='-1'),
         DeclareLaunchArgument('enable_heartbeat', default_value='false'),
+        DeclareLaunchArgument('enable_frame_timestamp_csv', default_value='false'),
+        DeclareLaunchArgument('frame_timestamp_csv_file', default_value=''),
     ]
 
     # Node configuration

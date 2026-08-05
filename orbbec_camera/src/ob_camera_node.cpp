@@ -34,6 +34,22 @@
 namespace orbbec_camera {
 using namespace std::chrono_literals;
 
+namespace {
+
+int64_t getSystemNowUs() {
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+             std::chrono::system_clock::now().time_since_epoch())
+      .count();
+}
+
+int64_t getSteadyNowUs() {
+  return std::chrono::duration_cast<std::chrono::microseconds>(
+             std::chrono::steady_clock::now().time_since_epoch())
+      .count();
+}
+
+}  // namespace
+
 OBCameraNode::OBCameraNode(rclcpp::Node *node, std::shared_ptr<ob::Device> device,
                            std::shared_ptr<Parameters> parameters, bool use_intra_process)
     : node_(node),
@@ -58,6 +74,13 @@ OBCameraNode::OBCameraNode(rclcpp::Node *node, std::shared_ptr<ob::Device> devic
   compression_params_.push_back(cv::IMWRITE_PNG_STRATEGY_DEFAULT);
   setupDefaultImageFormat();
   setupTopics();
+  if (enable_frame_timestamp_csv_) {
+    frame_timestamp_csv_logger_ =
+        std::make_unique<FrameTimestampCsvLogger>(true, frame_timestamp_csv_file_, logger_);
+    if (!frame_timestamp_csv_logger_->enabled()) {
+      frame_timestamp_csv_logger_.reset();
+    }
+  }
 #if defined(USE_RK_HW_DECODER)
   jpeg_decoder_ = std::make_unique<RKJPEGDecoder>(width_[COLOR], height_[COLOR]);
 #elif defined(USE_NV_HW_DECODER)
@@ -110,6 +133,10 @@ void OBCameraNode::clean() noexcept {
   std::lock_guard<decltype(device_lock_)> lock(device_lock_);
   RCLCPP_WARN_STREAM(logger_, "Do destroy ~OBCameraNode");
   is_running_.store(false);
+  if (frame_timestamp_csv_logger_) {
+    frame_timestamp_csv_logger_->shutdown();
+    frame_timestamp_csv_logger_.reset();
+  }
   RCLCPP_WARN_STREAM(logger_, "Stop tf thread");
   if (tf_thread_ && tf_thread_->joinable()) {
     tf_thread_->join();
@@ -455,6 +482,18 @@ void OBCameraNode::setupDevices() {
       device_->isPropertySupported(OB_PROP_COLOR_AE_MAX_EXPOSURE_INT, OB_PERMISSION_WRITE)) {
     RCLCPP_INFO_STREAM(logger_, "Setting color AE max exposure to " << color_ae_max_exposure_);
     TRY_TO_SET_PROPERTY(setIntProperty, OB_PROP_COLOR_AE_MAX_EXPOSURE_INT, color_ae_max_exposure_);
+  }
+  if (color_ae_max_gain_ != -1 &&
+      device_->isPropertySupported(OB_PROP_COLOR_AE_MAX_GAIN_INT, OB_PERMISSION_WRITE)) {
+    auto range = device_->getIntPropertyRange(OB_PROP_COLOR_AE_MAX_GAIN_INT);
+    if (color_ae_max_gain_ < range.min || color_ae_max_gain_ > range.max) {
+      RCLCPP_ERROR(logger_,
+                   "color AE max gain value is out of range[%d,%d], please check the value",
+                   range.min, range.max);
+    } else {
+      RCLCPP_INFO_STREAM(logger_, "Setting color AE max gain to " << color_ae_max_gain_);
+      TRY_TO_SET_PROPERTY(setIntProperty, OB_PROP_COLOR_AE_MAX_GAIN_INT, color_ae_max_gain_);
+    }
   }
   if (color_brightness_ != -1 &&
       device_->isPropertySupported(OB_PROP_COLOR_BRIGHTNESS_INT, OB_PERMISSION_WRITE)) {
@@ -1151,6 +1190,7 @@ void OBCameraNode::getParameters() {
   setAndGetNodeParameter<int>(color_gain_, "color_gain", -1);
   setAndGetNodeParameter<int>(color_white_balance_, "color_white_balance", -1);
   setAndGetNodeParameter<int>(color_ae_max_exposure_, "color_ae_max_exposure", -1);
+  setAndGetNodeParameter<int>(color_ae_max_gain_, "color_ae_max_gain", -1);
   setAndGetNodeParameter<int>(color_brightness_, "color_brightness", -1);
   setAndGetNodeParameter<int>(color_sharpness_, "color_sharpness", -1);
   setAndGetNodeParameter<int>(color_saturation_, "color_saturation", -1);
@@ -1247,6 +1287,8 @@ void OBCameraNode::getParameters() {
   setAndGetNodeParameter<int>(depth_ae_roi_bottom_, "depth_ae_roi_bottom", -1);
 
   setAndGetNodeParameter<std::string>(time_domain_, "time_domain", "device");
+  setAndGetNodeParameter<bool>(enable_frame_timestamp_csv_, "enable_frame_timestamp_csv", false);
+  setAndGetNodeParameter<std::string>(frame_timestamp_csv_file_, "frame_timestamp_csv_file", "");
   auto device_info = device_->getDeviceInfo();
   CHECK_NOTNULL(device_info.get());
   auto pid = device_info->pid();
@@ -1407,12 +1449,21 @@ void OBCameraNode::setupPublishers() {
     if (use_intra_process_) {
       image_qos_profile = rmw_qos_profile_default;
     }
-    if (use_intra_process_) {
+    const bool is_mjpg_color_stream =
+        stream_index == COLOR && format_[stream_index] == OB_FORMAT_MJPG;
+    if (use_intra_process_ || is_mjpg_color_stream) {
       image_publishers_[stream_index] =
           std::make_shared<image_rcl_publisher>(*node_, topic, image_qos_profile);
     } else {
       image_publishers_[stream_index] =
           std::make_shared<image_transport_publisher>(*node_, topic, image_qos_profile);
+    }
+    if (is_mjpg_color_stream) {
+      compressed_image_publishers_[stream_index] =
+          node_->create_publisher<sensor_msgs::msg::CompressedImage>(
+              topic + "/compressed",
+              rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(image_qos_profile),
+                          image_qos_profile));
     }
 
     topic = name + "/camera_info";
@@ -1820,6 +1871,22 @@ void OBCameraNode::onNewFrameSetCallback(std::shared_ptr<ob::FrameSet> frame_set
   if (frame_set == nullptr) {
     return;
   }
+  if (frame_timestamp_csv_logger_ && frame_timestamp_csv_logger_->enabled()) {
+    const auto frame_set_arrival_system_us = getSystemNowUs();
+    const auto frame_set_arrival_steady_us = getSteadyNowUs();
+    auto final_color_frame = frame_set->getFrame(OB_FRAME_COLOR);
+    auto final_depth_frame = frame_set->getFrame(OB_FRAME_DEPTH);
+    const bool track_color = enable_stream_[COLOR] && static_cast<bool>(final_color_frame);
+    const bool track_depth = enable_stream_[DEPTH] && static_cast<bool>(final_depth_frame);
+    const bool color_publish_expected = track_color;
+    const bool depth_publish_expected = track_depth;
+
+    frame_timestamp_csv_logger_->recordFrameSet(
+        final_color_frame, final_depth_frame, frame_set_arrival_system_us,
+        frame_set_arrival_steady_us, track_color, track_depth, color_publish_expected,
+        depth_publish_expected);
+  }
+
   try {
     if (!tf_published_) {
       publishStaticTransforms();
@@ -2031,8 +2098,11 @@ void OBCameraNode::onNewFrameCallback(const std::shared_ptr<ob::Frame> &frame,
   if (frame == nullptr) {
     return;
   }
-  CHECK_NOTNULL(image_publishers_[stream_index]);
-  bool has_subscriber = image_publishers_[stream_index]->get_subscription_count() > 0;
+  CHECK_NOTNULL(image_publishers_.at(stream_index));
+  const bool has_raw_image_subscriber =
+      image_publishers_.at(stream_index)->get_subscription_count() > 0;
+  const bool has_compressed_image_subscriber = hasCompressedImageSubscriber(stream_index);
+  bool has_subscriber = has_raw_image_subscriber || has_compressed_image_subscriber;
   has_subscriber =
       has_subscriber || camera_info_publishers_[stream_index]->get_subscription_count() > 0;
   has_subscriber =
@@ -2165,6 +2235,18 @@ void OBCameraNode::onNewFrameCallback(const std::shared_ptr<ob::Frame> &frame,
   if (isGemini335PID(pid)) {
     publishMetadata(frame, stream_index, camera_info.header);
   }
+  if (stream_index == COLOR && frame->format() == OB_FORMAT_MJPG &&
+      has_compressed_image_subscriber) {
+    publishCompressedColorImage(frame, stream_index, timestamp, frame_id);
+    // Record CSV publish timestamp here only when there is no raw image subscriber.
+    // If a raw subscriber also exists, the existing logging at the raw publish site will record
+    // it, avoiding a double call that would corrupt publish_steady_delta_us.
+    if (!has_raw_image_subscriber && frame_timestamp_csv_logger_ &&
+        frame_timestamp_csv_logger_->enabled()) {
+      frame_timestamp_csv_logger_->recordPreImagePublish(stream_index.first, frame,
+                                                         getSystemNowUs(), getSteadyNowUs());
+    }
+  }
   CHECK_NOTNULL(image_publishers_[stream_index]);
   if (image_publishers_[stream_index]->get_subscription_count() == 0) {
     return;
@@ -2201,6 +2283,11 @@ void OBCameraNode::onNewFrameCallback(const std::shared_ptr<ob::Frame> &frame,
   image_msg->header.frame_id = frame_id;
   CHECK(image_publishers_.count(stream_index) > 0);
   saveImageToFile(stream_index, image, *image_msg);
+  if (frame_timestamp_csv_logger_ && frame_timestamp_csv_logger_->enabled() &&
+      (stream_index == COLOR || stream_index == DEPTH)) {
+    frame_timestamp_csv_logger_->recordPreImagePublish(stream_index.first, frame, getSystemNowUs(),
+                                                       getSteadyNowUs());
+  }
   image_publishers_[stream_index]->publish(std::move(image_msg));
   if (stream_index == COLOR && enable_color_undistortion_ &&
       color_undistortion_publisher_->get_subscription_count() > 0) {
@@ -2815,6 +2902,29 @@ orbbec_camera_msgs::msg::IMUInfo OBCameraNode::createIMUInfo(
   }
 
   return imu_info;
+}
+
+bool OBCameraNode::hasCompressedImageSubscriber(const stream_index_pair &stream_index) const {
+  auto it = compressed_image_publishers_.find(stream_index);
+  return it != compressed_image_publishers_.end() && it->second &&
+         it->second->get_subscription_count() > 0;
+}
+
+void OBCameraNode::publishCompressedColorImage(const std::shared_ptr<ob::Frame> &frame,
+                                               const stream_index_pair &stream_index,
+                                               const rclcpp::Time &timestamp,
+                                               const std::string &frame_id) {
+  auto it = compressed_image_publishers_.find(stream_index);
+  if (it == compressed_image_publishers_.end() || !it->second) {
+    return;
+  }
+  sensor_msgs::msg::CompressedImage msg;
+  msg.header.stamp = timestamp;
+  msg.header.frame_id = frame_id;
+  msg.format = "jpeg";
+  const auto *data = static_cast<const uint8_t *>(frame->data());
+  msg.data.assign(data, data + frame->dataSize());
+  it->second->publish(std::move(msg));
 }
 
 }  // namespace orbbec_camera

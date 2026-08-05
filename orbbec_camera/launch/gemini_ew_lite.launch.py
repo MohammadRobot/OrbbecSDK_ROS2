@@ -49,7 +49,6 @@ def generate_launch_description():
         DeclareLaunchArgument('color_info_url', default_value=''),
         DeclareLaunchArgument('log_level', default_value='none'),
         DeclareLaunchArgument('enable_publish_extrinsic', default_value='false'),
-        DeclareLaunchArgument('enable_soft_filter', default_value='true'),
         DeclareLaunchArgument('enable_ldp', default_value='true'),
         DeclareLaunchArgument('enable_soft_filter', default_value='true'),
         DeclareLaunchArgument('soft_filter_max_diff', default_value='-1'),
@@ -58,6 +57,8 @@ def generate_launch_description():
         DeclareLaunchArgument('align_mode', default_value='HW'),
         DeclareLaunchArgument('laser_energy_level', default_value='-1'),
         DeclareLaunchArgument('enable_heartbeat', default_value='false'),
+        DeclareLaunchArgument('enable_frame_timestamp_csv', default_value='false'),
+        DeclareLaunchArgument('frame_timestamp_csv_file', default_value=''),
 
     ]
 

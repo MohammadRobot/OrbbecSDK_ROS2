@@ -19,6 +19,7 @@ def generate_launch_description():
         DeclareLaunchArgument('device_num', default_value='1'),
         DeclareLaunchArgument('vendor_id', default_value='0x2bc5'),
         DeclareLaunchArgument('product_id', default_value=''),
+        DeclareLaunchArgument('uvc_backend', default_value='auto'),#auto, libuvc or v4l2
         DeclareLaunchArgument('enable_point_cloud', default_value='true'),
         DeclareLaunchArgument('enable_colored_point_cloud', default_value='true'),
         DeclareLaunchArgument('cloud_frame_id', default_value=''),
