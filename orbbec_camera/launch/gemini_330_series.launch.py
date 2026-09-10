@@ -155,6 +155,8 @@ def generate_launch_description():
         DeclareLaunchArgument('enable_publish_extrinsic', default_value='false'),
         DeclareLaunchArgument('enable_d2c_viewer', default_value='false'),
         DeclareLaunchArgument('enable_ldp', default_value='true'),
+        DeclareLaunchArgument('enable_lrm_obstacle_distance_publish', default_value='false'),
+        DeclareLaunchArgument('lrm_obstacle_distance_publish_rate', default_value='10.0'),
         DeclareLaunchArgument('enable_soft_filter', default_value='true'),
         DeclareLaunchArgument('soft_filter_max_diff', default_value='-1'),
         DeclareLaunchArgument('soft_filter_speckle_size', default_value='-1'),

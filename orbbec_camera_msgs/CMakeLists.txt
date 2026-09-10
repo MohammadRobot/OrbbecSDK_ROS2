@@ -20,6 +20,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Metadata.msg"
   "msg/IMUInfo.msg"
   "msg/RGBD.msg"
+  "msg/StreamProfile.msg"
   "srv/GetBool.srv"
   "srv/GetDeviceInfo.srv"
   "srv/GetCameraInfo.srv"
@@ -27,6 +28,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetString.srv"
   "srv/SetInt32.srv"
   "srv/SetString.srv"
+  "srv/SetStreamProfile.srv"
   DEPENDENCIES
   sensor_msgs
   std_msgs)
